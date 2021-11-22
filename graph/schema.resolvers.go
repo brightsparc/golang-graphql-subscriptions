@@ -22,6 +22,7 @@ func (r *mutationResolver) CreateMessage(ctx context.Context, message string) (*
 	r.RedisClient.XAdd(&redis.XAddArgs{
 		Stream: "room",
 		ID:     "*",
+		MaxLen: 10,
 		Values: map[string]interface{}{
 			"message": m.Message,
 		},
