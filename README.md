@@ -40,3 +40,13 @@ Post a second message and see it appear in the other window.
 Once the application is running, you will notice redis message [XADD](https://redis.io/commands/XADD) and [XREAD](https://redis.io/commands/xread) appear in redis output.
 
 Note `XADD` has specified `MAXLEN` argument if 10 to limit the total size or history of the stream, so if you opened a new window, you would only see up to 10 messages in the history.
+
+## Authorization
+
+RBAC is supported through [casbin](https://casbin.org/) integration.
+
+* There is a [graphql-authz](https://github.com/casbin/graphql-authz) client, which is able to be configured with an enforcer.
+* The enforder will talk to the [casbin server](https://github.com/casbin/casbin-server) over GRPC via the [casbin-go-client](https://github.com/casbin/casbin-go-client).
+* The cabin server will persist policies using the [redis-adapter](https://github.com/casbin/redis-adapter).
+* The casbin server will be configured with a [model](https://casbin.org/docs/en/supported-models) that will support `RBAC with resource roles`.
+* The casbin server can be configured with a [redis-watcher](https://github.com/casbin/redis-watcher) if model or policies need to be reladed from scratch. 
