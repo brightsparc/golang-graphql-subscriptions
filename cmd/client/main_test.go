@@ -4,22 +4,23 @@ import (
 	"testing"
 
 	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/model"
-	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 )
 
-func testEnforce(t *testing.T, e *casbin.Enforcer, request []interface{}) {
+func testEnforce(t *testing.T, e *casbin.Enforcer, r []interface{}) {
 	t.Helper()
-	if myRes, _ := e.Enforce(request[0], request[1], request[2]); myRes != request[3] {
-		t.Errorf("%s, %v, %s: %t, supposed to be %t", request[0], request[1], request[2], myRes, request[3])
+	if myRes, _ := e.Enforce(r[0], r[1], r[2], r[3]); myRes != r[4] {
+		t.Errorf("%s, %v, %v, %s: %t, supposed to be %t", r[0], r[1], r[2], r[3], myRes, r[4])
 	}
 }
 
 func TestModel(t *testing.T) {
-	m, _ := model.NewModelFromString(getModelText())
-	a := fileadapter.NewAdapter("rbac_policy.csv")
-	e, _ := casbin.NewEnforcer(m, a)
-	for _, request := range testRequests() {
+	e, _ := casbin.NewEnforcer("rbac_policy.conf", "rbac_policy.csv")
+
+	t.Log("Policy", e.GetPolicy())
+	t.Log("Grouping Policy", e.GetGroupingPolicy())
+	t.Log("Named Grouping Policy g2", e.GetNamedGroupingPolicy("g2"))
+
+	for _, request := range testRequests("d1") {
 		testEnforce(t, e, request)
 	}
 }

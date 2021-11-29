@@ -15,20 +15,20 @@ import (
 
 func getModelText() string {
 	return `[request_definition]
-r = sub, obj, act
+r = sub, dom, obj, act
 
 [policy_definition]
-p = sub, obj, act, eft
+p = sub, dom, obj, act, eft
 
 [role_definition]
-g = _, _
-g2 = _, _
+g = _, _, _
+g2 = _, _, _
 
 [policy_effect]
 e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
 
 [matchers]
-m = g(r.sub, p.sub) && g2(r.obj, p.obj) && r.act == p.act`
+m = g(r.sub, p.sub, r.dom) && g2(r.obj, p.obj, r.dom) && r.dom == p.dom && r.act == p.act`
 }
 
 func timeTrack(start time.Time, name string) {
@@ -36,23 +36,23 @@ func timeTrack(start time.Time, name string) {
 	log.Printf("%s took %s", name, elapsed)
 }
 
-func testRequests() [][]interface{} {
+func testRequests(domain string) [][]interface{} {
 	return [][]interface{}{
-		{"john", "m1", "predict", true},  // Public allowed predict
-		{"john", "m1", "read", false},    // Not allowed by default
-		{"john", "m2", "read", true},     // Override to allow m2 read
-		{"adam", "m1", "predict", true},  // inherit from engine
-		{"adam", "e1", "read", true},     // allowed by engine
-		{"adam", "e1", "write", true},    // allow by engine
-		{"adam", "e2", "read", false},    // engine e2 doesn't exist
-		{"matt", "m1", "write", true},    // allow by group 2
-		{"matt", "m2", "write", true},    // allowed by group 1
-		{"matt", "m3", "write", false},   // override deny
-		{"bolek", "m1", "predict", true}, // inherits public
-		{"bolek", "m1", "write", true},   // inherits model
-		{"bolek", "e1", "write", false},  // override deny
-		{"bolek", "m1", "delete", true},  // admin only permission
-		{"bolek", "s1", "write", true},   // inherits source with admin
+		{"john", domain, "m1", "predict", true},  // Public allowed predict
+		{"john", domain, "m1", "read", false},    // Not allowed by default
+		{"john", domain, "m2", "read", true},     // Override to allow m2 read
+		{"adam", domain, "m1", "predict", true},  // inherit from engine
+		{"adam", domain, "e1", "read", true},     // allowed by engine
+		{"adam", domain, "e1", "write", true},    // allow by engine
+		{"adam", domain, "e2", "read", false},    // engine e2 doesn't exist
+		{"matt", domain, "m1", "write", true},    // allow by group 2
+		{"matt", domain, "m2", "write", true},    // allowed by group 1
+		{"matt", domain, "m3", "write", false},   // override deny
+		{"bolek", domain, "m1", "predict", true}, // inherits public
+		{"bolek", domain, "m1", "write", true},   // inherits model
+		{"bolek", domain, "e1", "write", false},  // override deny
+		{"bolek", domain, "m1", "delete", true},  // admin only permission
+		{"bolek", domain, "s1", "write", true},   // inherits source with admin
 	}
 }
 
@@ -67,8 +67,10 @@ func randString(n int) string {
 }
 
 func main() {
+	var domain string
 	var port, userCount, objectCount int
 	var overrideProb float64
+	flag.StringVar(&domain, "domain", "d1", "domain/tennant for this configuration")
 	flag.IntVar(&port, "port", 50051, "listening port")
 	flag.IntVar(&userCount, "userCount", 0, "number of users to generate")
 	flag.IntVar(&objectCount, "objectCount", 0, "number of objects to generate per user")
@@ -96,38 +98,40 @@ func main() {
 	// Add policy files over GRPC
 	log.Println("Adding default rules...")
 
-	// Add role permissions (role, object, action) effect allow is default
-	e.AddPolicy(ctx, "role:DATA", "s1", "read", "allow")
-	e.AddPolicy(ctx, "role:DATA", "s1", "write", "allow")
-	e.AddPolicy(ctx, "role:ENGINES", "e1", "read", "allow")
-	e.AddPolicy(ctx, "role:ENGINES", "e1", "write", "allow")
-	e.AddPolicy(ctx, "role:PUBLIC", "m1", "predict", "allow")
-	e.AddPolicy(ctx, "role:ADMIN", "m1", "delete", "allow")
-
-	// Add role permissions for groups of models
-	e.AddPolicy(ctx, "role:MODELS", "group:g1", "read", "allow")
-	e.AddPolicy(ctx, "role:MODELS", "group:g1", "write", "allow")
-	e.AddNamedGroupingPolicy(ctx, "g2", "m1", "group:g1")
-	e.AddNamedGroupingPolicy(ctx, "g2", "m2", "group:g1")
-	e.AddNamedGroupingPolicy(ctx, "g2", "m3", "group:g1")
+	// Add role permissions (role, domain, object, action, effect)
+	e.AddPolicy(ctx, "role:DATA", domain, "s1", "read", "allow")
+	e.AddPolicy(ctx, "role:DATA", domain, "s1", "write", "allow")
+	e.AddPolicy(ctx, "role:ENGINES", domain, "e1", "read", "allow")
+	e.AddPolicy(ctx, "role:ENGINES", domain, "e1", "write", "allow")
+	e.AddPolicy(ctx, "role:PUBLIC", domain, "m1", "predict", "allow")
+	e.AddPolicy(ctx, "role:ADMIN", domain, "m1", "delete", "allow")
 
 	// Define role-to-role mapping (public->engines,modesl,data->admin)
-	e.AddGroupingPolicy(ctx, "role:DATA", "role:PUBLIC")
-	e.AddGroupingPolicy(ctx, "role:ENGINES", "role:PUBLIC")
-	e.AddGroupingPolicy(ctx, "role:MODELS", "role:PUBLIC")
-	e.AddGroupingPolicy(ctx, "role:ADMIN", "role:DATA")
-	e.AddGroupingPolicy(ctx, "role:ADMIN", "role:ENGINES")
-	e.AddGroupingPolicy(ctx, "role:ADMIN", "role:MODELS")
-	// Specify user membership
-	e.AddGroupingPolicy(ctx, "john", "role:PUBLIC")
-	e.AddGroupingPolicy(ctx, "adam", "role:ENGINES")
-	e.AddGroupingPolicy(ctx, "matt", "role:MODELS")
-	e.AddGroupingPolicy(ctx, "bolek", "role:ADMIN")
+	e.AddGroupingPolicy(ctx, "role:DATA", "role:PUBLIC", domain)
+	e.AddGroupingPolicy(ctx, "role:ENGINES", "role:PUBLIC", domain)
+	e.AddGroupingPolicy(ctx, "role:MODELS", "role:PUBLIC", domain)
+	e.AddGroupingPolicy(ctx, "role:ADMIN", "role:DATA", domain)
+	e.AddGroupingPolicy(ctx, "role:ADMIN", "role:ENGINES", domain)
+	e.AddGroupingPolicy(ctx, "role:ADMIN", "role:MODELS", domain)
 
-	// Add overrides for specific users
-	e.AddPolicy(ctx, "john", "m2", "read", "allow")
-	e.AddPolicy(ctx, "matt", "m3", "write", "deny")
-	e.AddPolicy(ctx, "bolek", "e1", "write", "deny")
+	// Add role permissions for groups (role, domain, group, action, effect)
+	e.AddPolicy(ctx, "role:MODELS", domain, "group:g1", "read", "allow")
+	e.AddPolicy(ctx, "role:MODELS", domain, "group:g1", "write", "allow")
+	// Add members to group g2 (group, object, domain)
+	e.AddNamedGroupingPolicy(ctx, "g2", "m1", "group:g1", domain)
+	e.AddNamedGroupingPolicy(ctx, "g2", "m2", "group:g1", domain)
+	e.AddNamedGroupingPolicy(ctx, "g2", "m3", "group:g1", domain)
+
+	// Specify user membership (user, role, domain)
+	e.AddGroupingPolicy(ctx, "john", "role:PUBLIC", domain)
+	e.AddGroupingPolicy(ctx, "adam", "role:ENGINES", domain)
+	e.AddGroupingPolicy(ctx, "matt", "role:MODELS", domain)
+	e.AddGroupingPolicy(ctx, "bolek", "role:ADMIN", domain)
+
+	// Add overrides for specific users (user, domain, object, action, effect)
+	e.AddPolicy(ctx, "john", domain, "m2", "read", "allow")
+	e.AddPolicy(ctx, "matt", domain, "m3", "write", "deny")
+	e.AddPolicy(ctx, "bolek", domain, "e1", "write", "deny")
 
 	roleIds := []string{"role:ENGINES", "role:MODELS", "role:DATA", "role:ADMIN", "role:PUBLIC"}
 	objTypes := []string{"e", "m", "s"}
@@ -141,13 +145,13 @@ func main() {
 		for i := 0; i < objectCount; i++ {
 			j := rand.Intn(len(objTypes))
 			objType := objTypes[j]
-			typeId := fmt.Sprintf("%s%d", objType, i)
+			objId := fmt.Sprintf("%s%d", objType, i)
 			// Get a random selection of actions
 			for _, k := range rand.Perm(rand.Intn(len(actTypes))) {
 				roleId := roleIds[j]
 				eft := eftTypes[rand.Intn(len(eftTypes))]
 				act := actTypes[k]
-				e.AddPolicy(ctx, roleId, typeId, act, eft)
+				e.AddPolicy(ctx, roleId, domain, objId, act, eft)
 			}
 			bar.Add(1)
 		}
@@ -157,13 +161,13 @@ func main() {
 			userId := randString(32)
 			roleId := roleIds[rand.Intn(len(roleIds))]
 			// Add user to random role
-			e.AddGroupingPolicy(ctx, userId, roleId)
+			e.AddGroupingPolicy(ctx, userId, roleId, domain)
 			// Add override if less than prob
 			if rand.Float64() < overrideProb {
-				typeId := fmt.Sprintf("%s%d", objTypes[rand.Intn(len(objTypes))], rand.Intn(objectCount)+1)
+				objId := fmt.Sprintf("%s%d", objTypes[rand.Intn(len(objTypes))], rand.Intn(objectCount)+1)
 				act := actTypes[rand.Intn(len(actTypes))]
 				eft := eftTypes[rand.Intn(len(eftTypes))]
-				e.AddPolicy(ctx, userId, typeId, act, eft)
+				e.AddPolicy(ctx, userId, domain, objId, act, eft)
 			}
 			bar.Add(1)
 		}
@@ -171,8 +175,8 @@ func main() {
 
 	// Test policy files over GRPC
 	defer timeTrack(time.Now(), "Tests completed in")
-	for _, r := range testRequests() {
-		if ok, _ := e.Enforce(ctx, r[0], r[1], r[2]); ok != r[3] {
+	for _, r := range testRequests(domain) {
+		if ok, _ := e.Enforce(ctx, r[0], r[1], r[2], r[3]); ok != r[4] {
 			log.Printf("Unexpected request %v", r)
 		}
 	}
