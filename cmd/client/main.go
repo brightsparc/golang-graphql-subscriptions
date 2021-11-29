@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/casbin/casbin-go-client/client"
 	"google.golang.org/grpc"
@@ -26,6 +27,11 @@ e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
 
 [matchers]
 m = g(r.sub, p.sub) && g2(r.obj, p.obj) && r.act == p.act`
+}
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
 }
 
 func testRequests() [][]interface{} {
@@ -72,6 +78,8 @@ func main() {
 		panic(err)
 	}
 
+	// Add policy files over GRPC
+
 	// Add role permissions (role, object, action) effect allow is default
 	e.AddPolicy(ctx, "role:DATA", "s1", "read", "allow")
 	e.AddPolicy(ctx, "role:DATA", "s1", "write", "allow")
@@ -106,12 +114,14 @@ func main() {
 	e.AddPolicy(ctx, "bolek", "e1", "write", "deny")
 
 	// Log the policy statements, and grouing policies
-	fmt.Println("\nPolicy p")
-	fmt.Println(e.GetPolicy(ctx))
-	fmt.Println("\nGrouping Policy g")
-	fmt.Println(e.GetGroupingPolicy(ctx))
-	fmt.Println("\nGrouping Policy g2")
-	fmt.Println(e.GetNamedGroupingPolicy(ctx, "g2"))
+	log.Println("\nPolicy p")
+	log.Println(e.GetPolicy(ctx))
+	log.Println("\nGrouping Policy g")
+	log.Println(e.GetGroupingPolicy(ctx))
+	log.Println("\nGrouping Policy g2")
+	log.Println(e.GetNamedGroupingPolicy(ctx, "g2"))
+
+	// Test policy files over GRPC
 
 	for _, r := range testRequests() {
 		if ok, _ := e.Enforce(ctx, r[0], r[1], r[2]); ok != r[3] {
@@ -119,5 +129,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("\nAll tests passed")
+	defer timeTrack(time.Now(), "Tests completed in")
+
+	log.Println("\nAll tests passed")
 }
