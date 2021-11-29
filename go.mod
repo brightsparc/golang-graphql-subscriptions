@@ -12,8 +12,10 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/graphql-go/graphql v0.8.0 // indirect
 	github.com/labstack/echo/v4 v4.1.17
+	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
+	github.com/schollz/progressbar/v3 v3.8.3 // indirect
 	github.com/thanhpk/randstr v1.0.4
 	github.com/vektah/gqlparser/v2 v2.1.0
 	google.golang.org/grpc v1.42.0 // indirect
