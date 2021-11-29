@@ -1,0 +1,33 @@
+# Create roles permissions for explicit objects
+p, role:DATA, s1, read, allow
+p, role:DATA, s1, write, allow
+p, role:ENGINES, e1, read, allow
+p, role:ENGINES, e1, write, allow
+p, role:PUBLIC, m1, predict, allow
+p, role:ADMIN, m1, delete, allow
+
+# Create role permissions for grousp of models
+p, role:MODELS, group:g1, read, allow
+p, role:MODELS, group:g1, write, allow
+g2, m1, group:g1
+g2, m2, group:g1
+g2, m3, group:g1
+
+# Define role-to-role mapping (public->engines,modesl,data->admin)
+g, role:DATA, role:PUBLIC
+g, role:ENGINES, role:PUBLIC
+g, role:MODELS, role:PUBLIC
+g, role:ADMIN, role:DATA
+g, role:ADMIN, role:ENGINES
+g, role:ADMIN, role:MODELS
+
+# specify user membership in roles
+g, john, role:PUBLIC
+g, adam, role:ENGINES
+g, matt, role:MODELS
+g, bolek, role:ADMIN
+
+# override permissions for specific objects
+p, john, m2, read, allow
+p, matt, m3, write, deny
+p, bolek, e1, write, deny
