@@ -68,10 +68,12 @@ func randString(n int) string {
 
 func main() {
 	var domain string
+	var redisServer string
 	var port, userCount, objectCount int
 	var overrideProb float64
+	flag.IntVar(&port, "port", 50051, "casbin port")
+	flag.StringVar(&redisServer, "redisServer", "redis:6379", "redis server")
 	flag.StringVar(&domain, "domain", "d1", "domain/tennant for this configuration")
-	flag.IntVar(&port, "port", 50051, "listening port")
 	flag.IntVar(&userCount, "userCount", 0, "number of users to generate")
 	flag.IntVar(&objectCount, "objectCount", 0, "number of objects to generate per user")
 	flag.Float64Var(&overrideProb, "overrideProb", 0.1, "percent that user has override")
@@ -88,8 +90,8 @@ func main() {
 		panic(err)
 	}
 
-	log.Println("Loading enforcer...")
-	cfg := client.Config{DriverName: "redis", ConnectString: ":6379", ModelText: getModelText(), DbSpecified: true}
+	log.Printf("Loading enforcer with connection: %s ...", redisServer)
+	cfg := client.Config{DriverName: "redis", ConnectString: redisServer, ModelText: getModelText(), DbSpecified: true}
 	e, err := c.NewEnforcer(ctx, cfg)
 	if err != nil {
 		panic(err)
@@ -138,7 +140,7 @@ func main() {
 	actTypes := []string{"read", "write", "predict", "delete"}
 	eftTypes := []string{"allow", "deny"}
 
-	if userCount > 0 {
+	if objectCount > 0 && userCount > 0 {
 		log.Printf("Generating %d objects...", objectCount)
 		// For each object type, create a series of policies for action and effect
 		bar := progressbar.Default(int64(objectCount))

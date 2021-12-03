@@ -4,7 +4,8 @@ import { ApolloClient, InMemoryCache,  } from '@apollo/client';
 import { WebSocketLink } from '@apollo/client/link/ws';
 
 const wsLink = new WebSocketLink({
-  uri: `ws://localhost:8080/subscriptions`,
+  // Make url path consistent with http to get playground to work
+  uri: `ws://localhost:8080/query`,
   options: {
     reconnect: true
   }

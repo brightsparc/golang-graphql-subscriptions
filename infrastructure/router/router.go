@@ -27,7 +27,7 @@ func NewRouter(e *echo.Echo, srv *handler.Server) *echo.Echo {
 		})
 
 		// For Subscriptions
-		e.GET("/subscriptions", func(c echo.Context) error {
+		e.GET("/query", func(c echo.Context) error {
 			srv.ServeHTTP(c.Response(), c.Request())
 			return nil
 		})
