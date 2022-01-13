@@ -41,6 +41,39 @@ Once the application is running, you will notice redis message [XADD](https://re
 
 Note `XADD` has specified `MAXLEN` argument if 10 to limit the total size or history of the stream, so if you opened a new window, you would only see up to 10 messages in the history.
 
+## Playground
+
+Launch the [playground](https://graphqlbin.com/v2/zY68Ux) which includes tabs to execute the following:
+### Create Message
+
+```
+mutation($message: String!) {
+  createMessage(message: $message) {
+    message
+  }
+}
+```
+
+### Query Messages
+
+```
+query {
+  messages {
+    id
+    message
+  }
+}
+```
+### Subscribe to messages
+
+```
+subscription {
+  messageCreated {
+    id
+    message
+  }
+}
+```
 ## Authorization
 
 RBAC is supported through [casbin](https://casbin.org/) integration.
